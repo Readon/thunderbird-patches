@@ -80,6 +80,14 @@ jobs:
         if (-not (Test-Path "C:\mozilla-build\start-shell.bat")) {
           throw "MozillaBuild installation failed"
         }
+    - name: Rebase MSYS2 DLLs
+      # Without a rebase some MSYS2 forks fail with "child_info_fork::abort:
+      # Loaded to different address", which kills the build with
+      # "find: cannot fork: Resource temporarily unavailable".
+      continue-on-error: true
+      run: |
+        & "C:\mozilla-build\msys2\usr\bin\dash.exe" -c "/usr/bin/rebase -s -b 0x4000000000 /usr/bin/*.dll"
+        if ($LASTEXITCODE -ne 0) { Write-Warning "rebase exited with code $LASTEXITCODE" }
     - name: Import code signing certificate
       if: env.SIGNING_PFX_BASE64 != ''
       run: |

@@ -46,8 +46,11 @@ cp "$REPO_DIR/build/build.sh" .
 
 # Safety net: a Windows checkout with core.autocrlf=true turns the patch files
 # into CRLF files, which "hg qpush" cannot apply to the LF working copy.
-find "$REPO_DIR/$VER" -type f \( -name '*.patch' -o -name 'series*' \) -exec sed -i 's/\r$//' {} +
-# build.sh applies the patch series with "hg qpush", so Mercurial's mq extension
+if grep -qs $'\r' "$REPO_DIR/$VER/series-moz"; then
+  echo "ERROR: the patch files were checked out with CRLF line endings." >&2
+  echo "Check .gitattributes and core.autocrlf, see .github/workflows/windows.yml." >&2
+  exit 1
+fi
 # must be enabled. build.sh does that itself on Linux/macOS by writing .hg/hgrc
 # files, but on Windows it only appends to a mercurial.ini that is expected to
 # exist on the developer's machine. Clone the repositories here and enable mq in
