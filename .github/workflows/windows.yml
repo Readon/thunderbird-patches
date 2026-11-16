@@ -87,6 +87,10 @@ jobs:
         Remove-Item $pfx
         Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Format-Table Subject, Thumbprint
     - name: Build
+      env:
+        # start-shell.bat launches mintty (a GUI terminal) unless USE_MINTTY is
+        # set to 0, which would detach and swallow all output on a CI runner.
+        USE_MINTTY: "0"
       run: |
         # The build runs in the MozillaBuild shell, which provides the MSYS2
         # environment (mercurial, sed, wget, ...) that build.sh needs.
