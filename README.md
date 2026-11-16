@@ -120,8 +120,8 @@ The workflows also run when a tag like `140.0-automation` is pushed.
 Please note the limits of GitHub-hosted runners: 4 CPU cores, 16 GB RAM, and a job timeout of 6 hours. A full build
 from scratch takes several hours, therefore:
 
-1. `linux.yml` uses [sccache](https://github.com/mozilla-actions/sccache-action) so that repeat builds only compile
-what changed.
+1. `linux.yml` builds without a compiler cache: the cache service that `sccache` expects is not available on
+GitHub-hosted runners, so every run compiles everything from scratch. Expect several hours per run.
 1. `windows.yml` disables LTO and uses fewer parallel compiler jobs (`-j4`) to stay within the memory of the runner,
 and the checked-in `mozconfig` for Windows is adjusted at build time (the hard-coded `WIN32_REDIST_DIR` is dropped so
 that the redistributable of the installed Visual Studio is detected automatically). These adjustments are made on the

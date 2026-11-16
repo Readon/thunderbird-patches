@@ -43,13 +43,9 @@ fi
 
 cp "$REPO_DIR/build/build.sh" .
 
-# Speed up repeat builds. sccache is provided by mozilla-actions/sccache-action.
-if [ -n "${SCCACHE_GHA_ENABLED:-}" ]; then
-  {
-    echo 'ac_add_options --with-ccache=sccache'
-    echo 'ac_add_options --disable-elf-hack'
-  } >> "$REPO_DIR/$VER/mozconfig-Linux"
-fi
+# CI runners have no persistent compiler cache, so build without one. The
+# "--disable-elf-hack" option keeps the link step a bit lighter.
+echo 'ac_add_options --disable-elf-hack' >> "$REPO_DIR/$VER/mozconfig-Linux"
 
 if [ "$MODE" = "prepare" ]; then
   printf 'Y\n' | ./build.sh "$VER" apply
