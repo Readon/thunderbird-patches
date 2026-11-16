@@ -44,14 +44,35 @@ fi
 
 cp "$REPO_DIR/build/build.sh" .
 
-# On Windows build.sh does not write .hg/hgrc files but expects a mercurial.ini
-# in the build directory and adds the mq extension to it.
+# build.sh applies the patch series with "hg qpush", so Mercurial's mq extension
+# must be enabled. build.sh does that itself on Linux/macOS by writing .hg/hgrc
+# files, but on Windows it only appends to a mercurial.ini that is expected to
+# exist on the developer's machine. Clone the repositories here and enable mq in
+# the per-repository configuration, which Mercurial always reads.
+# shellcheck disable=SC1090 # the name of the sourced file depends on the version
+. "$REPO_DIR/$VER/$VER.sh"
+MOZILLA_DIR="$(basename "$MOZILLA_REPO")"
+if ! [ -d "$MOZILLA_DIR" ]; then
+  echo "======================================================="
+  echo "Cloning $MOZILLA_REPO"
+  hg clone "$MOZILLA_REPO"
+  echo "======================================================="
+  echo "Cloning $COMM_REPO"
+  ( cd "$MOZILLA_DIR" && hg clone "$COMM_REPO" comm )
+fi
+for repo in "$MOZILLA_DIR" "$MOZILLA_DIR/comm"; do
+  if ! grep -qs '^mq[[:space:]]*=' "$repo/.hg/hgrc"; then
+    printf '[extensions]\nmq =\n' >> "$repo/.hg/hgrc"
+  fi
+done
+
+# build.sh only touches the mercurial.ini in the build directory if it exists.
 if ! [ -f mercurial.ini ]; then
   printf '[ui]\n' > mercurial.ini
 fi
 
-# A few adjustments for a GitHub-hosted runner. They only touch the working
-# copy of the mozconfig, the checked-in file stays untouched.
+# A few adjustments for a GitHub-hosted runner. They only touch the working copy
+# of the mozconfig, the checked-in file stays untouched.
 MOZCONFIG="$REPO_DIR/$VER/mozconfig"
 if [ -f "$MOZCONFIG" ]; then
   # The checked-in mozconfig points WIN32_REDIST_DIR at a directory of the
