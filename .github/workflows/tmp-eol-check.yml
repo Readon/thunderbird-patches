@@ -1,0 +1,23 @@
+name: tmp-eol-check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        path: thunderbird-patches
+    - name: Report line endings
+      run: |
+        "core.autocrlf: " + (git config --get core.autocrlf)
+        "system autocrlf: " + (git config --system --get core.autocrlf)
+        foreach ($p in @("thunderbird-patches/140/branding/02-branding-moz.patch", "thunderbird-patches/140/series-moz", "thunderbird-patches/140/140.sh", "thunderbird-patches/build/build.sh")) {
+          $text = [IO.File]::ReadAllText((Join-Path $env:GITHUB_WORKSPACE $p))
+          "$p -> CRLF: " + $text.Contains("`r`n")
+        }
