@@ -61,6 +61,10 @@ jobs:
         minimum-size: 16GB
         maximum-size: 16GB
         disk-root: "C:"
+    - name: Keep LF line endings
+      # The runner image sets core.autocrlf=true, which would check out the
+      # patch series with CRLF line endings and break "hg qpush".
+      run: git config --global core.autocrlf false
     - name: Checkout
       uses: actions/checkout@v7
       with:

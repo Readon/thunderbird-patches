@@ -44,6 +44,9 @@ fi
 
 cp "$REPO_DIR/build/build.sh" .
 
+# Safety net: a Windows checkout with core.autocrlf=true turns the patch files
+# into CRLF files, which "hg qpush" cannot apply to the LF working copy.
+find "$REPO_DIR/$VER" -type f \( -name '*.patch' -o -name 'series*' \) -exec sed -i 's/\r$//' {} +
 # build.sh applies the patch series with "hg qpush", so Mercurial's mq extension
 # must be enabled. build.sh does that itself on Linux/macOS by writing .hg/hgrc
 # files, but on Windows it only appends to a mercurial.ini that is expected to
