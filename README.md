@@ -129,6 +129,11 @@ working copy only, the files in this repository are not modified by the CI run.
 1. Builds that need more headroom (or reproducible release builds) still have to run on a self-hosted runner or a
 larger runner with a corresponding `runs-on` label.
 
+Betterbird's Windows branding patches sign the binaries and the installer with the code signing certificate from the
+certificate store of the current user. The value of the repository secrets `SIGNING_PFX_BASE64` (base64 encoded `.pfx`
+file) and `SIGNING_PFX_PASSWORD` is imported into the store before the build, so a signed installer is produced when
+these secrets are set. Without them, packaging still completes but the artifacts stay unsigned, as noted above.
+
 ## One-off build
 
 The standard build script `build.sh` initially pulls two Mozilla repositories. This is fine if you want to repeat the

@@ -38,6 +38,14 @@ env:
 jobs:
   build:
     name: Windows x86_64 (ESR ${{ inputs.version || github.ref_name }})
+    # Optional code signing certificate. Betterbird's Windows branding patch
+    # signs binaries and the installer with the code signing certificate from
+    # the certificate store of the current user, so providing one makes the
+    # build produce properly signed artifacts (see README.md).
+    env:
+      SIGNING_PFX_BASE64: ${{ secrets.SIGNING_PFX_BASE64 }}
+      SIGNING_PFX_PASSWORD: ${{ secrets.SIGNING_PFX_PASSWORD }}
+
     runs-on: windows-2022
     timeout-minutes: 350 # GitHub-hosted runners allow at most 360 minutes.
     defaults:
@@ -68,6 +76,16 @@ jobs:
         if (-not (Test-Path "C:\mozilla-build\start-shell.bat")) {
           throw "MozillaBuild installation failed"
         }
+    - name: Import code signing certificate
+      if: env.SIGNING_PFX_BASE64 != ''
+      run: |
+        $ErrorActionPreference = "Stop"
+        $pfx = Join-Path $env:RUNNER_TEMP "signing.pfx"
+        [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_PFX_BASE64))
+        $password = ConvertTo-SecureString -String $env:SIGNING_PFX_PASSWORD -Force -AsPlainText
+        Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password | Out-Null
+        Remove-Item $pfx
+        Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Format-Table Subject, Thumbprint
     - name: Build
       run: |
         # The build runs in the MozillaBuild shell, which provides the MSYS2
