@@ -104,8 +104,8 @@ GitHub Actions can build Betterbird from the patches in this repository. The wor
 | --- | --- | --- |
 | `linux.yml` | `ubuntu-22.04` | `betterbird-*.tar.xz` for Linux/x86_64 |
 | `windows.yml` | `windows-2022` | `betterbird-*.installer.exe` for Windows/x86_64 |
-| `mac-arm64.yml` | `macos-14-arm64` | `*.mac.dmg` for macOS/arm64 |
-
+| `windows-full.yml` | `windows-2022` | same, but resumable across several runs (see below) |
+| `mac-arm64.yml` | `macos-14` | `*.mac.dmg` for macOS/arm64 |
 Each workflow can be started manually from the "Actions" tab ("Run workflow") where you pick the ESR version
 (`140` or `153`) and the mode:
 
@@ -116,6 +116,24 @@ and `build/ci/windows-build.sh`, which call `build/build.sh`.
 to check whether the patch series still applies.
 
 The workflows also run when a tag like `140.0-automation` is pushed.
+
+### Windows builds and the 6 hour limit
+
+A full Betterbird build needs roughly 4 hours on a `windows-2022` runner (for comparison: a full Firefox Windows build
+takes about 3.9 hours there), which fits into the limit, but leaves little headroom for retries. `windows-full.yml` is
+therefore resumable:
+
+1. `mach build` runs under a time budget (`budget-minutes`, default 240). When the budget is reached the build stops and
+the job still ends successfully, so the following cache step always runs.
+1. The compiler output is kept in sccache (`C:\sccache`) and that directory is stored in the GitHub Actions cache between
+runs. A follow-up run restores it and only compiles what is still missing, so a build that was cut short continues where
+it stopped instead of starting over.
+1. Start the workflow again (same `version`) until it reports `complete=true`; then the installer appears as a workflow
+artifact. With `fresh` enabled the cache is ignored, which is useful after a change that invalidates all objects.
+
+Please note that the cache of a repository is limited to 10 GB in total, therefore `SCCACHE_CACHE_SIZE` is capped at 8G.
+The sources are cloned again in every run (about 40 minutes on Windows), which is the price for not having a self-hosted
+runner; a bigger machine or a self-hosted runner remains the faster option for regular builds.
 
 Please note the limits of GitHub-hosted runners: 4 CPU cores, 16 GB RAM, and a job timeout of 6 hours. A full build
 from scratch takes several hours, therefore:
