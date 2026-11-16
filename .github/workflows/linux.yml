@@ -1,0 +1,86 @@
+name: Linux
+
+# Builds Betterbird for Linux/x86_64 from the patches in this repository on a
+# GitHub-hosted runner and uploads the resulting tar archive as a workflow
+# artifact. See "GitHub Actions builds" in README.md for details.
+
+on:
+  # Manual run
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "ESR version to build"
+        default: "140"
+        required: true
+        type: choice
+        options: ["140", "153"]
+      mode:
+        description: "prepare = clone sources and apply patches only (smoke test)"
+        default: build
+        required: true
+        type: choice
+        options: [build, prepare]
+  # Run on tag push, e.g. "140.0-automation"
+  push:
+    tags: '[0-9][0-9][0-9].*-automation'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  VERSION: ${{ inputs.version || github.ref_name }}
+  MODE: ${{ inputs.mode || 'build' }}
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_IDLE_TIMEOUT: "0"
+
+jobs:
+  build:
+    name: Linux x86_64 (ESR ${{ inputs.version || github.ref_name }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350 # GitHub-hosted runners allow at most 360 minutes.
+
+    steps:
+    - name: Free disk space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # The tool cache holds the Node.js runtime used by the actions below.
+        tool-cache: false
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+    - name: Add swap space
+      uses: pierotofy/set-swap-space@master
+      with:
+        swap-size-gb: 12
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        # build.sh expects a directory called "thunderbird-patches" next to the
+        # build directory it runs in, i.e. next to $GITHUB_WORKSPACE itself.
+        path: thunderbird-patches
+    - name: Install build prerequisites
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mercurial wget libdbusmenu-glib-dev libdbusmenu-gtk3-dev
+    - name: Enable sccache
+      uses: mozilla-actions/sccache-action@v0.0.11
+    - name: Build
+      run: |
+        df -h
+        bash ./thunderbird-patches/build/ci/linux-build.sh
+    - name: Upload archive
+      if: env.MODE != 'prepare'
+      uses: actions/upload-artifact@v7
+      with:
+        name: betterbird-linux-x86_64-${{ env.VERSION }}
+        path: mozilla-esr*/obj-*/dist/betterbird-*.tar.*
+        if-no-files-found: error
+        compression-level: 0
+        retention-days: 14

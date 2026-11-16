@@ -96,6 +96,39 @@ Linux users please note that `08-branding-m-c.patch` patches a Windows installer
 However, that part of the build system should not be triggered for Linux builds.
 Windows users please note that packaging will fail without an appropriate code signing certificate installed.
 
+## GitHub Actions builds
+
+GitHub Actions can build Betterbird from the patches in this repository. The workflows live in `.github/workflows/`:
+
+| Workflow | Runner | Output |
+| --- | --- | --- |
+| `linux.yml` | `ubuntu-22.04` | `betterbird-*.tar.xz` for Linux/x86_64 |
+| `windows.yml` | `windows-2022` | `betterbird-*.installer.exe` for Windows/x86_64 |
+| `mac-arm64.yml` | `macos-14-arm64` | `*.mac.dmg` for macOS/arm64 |
+
+Each workflow can be started manually from the "Actions" tab ("Run workflow") where you pick the ESR version
+(`140` or `153`) and the mode:
+
+1. `build` clones the sources, applies the patch series, builds and packages Betterbird, and uploads the installer as
+a workflow artifact. `.github/workflows/*` are the thin wrapper, the actual work is done by `build/ci/linux-build.sh`
+and `build/ci/windows-build.sh`, which call `build/build.sh`.
+1. `prepare` only clones the sources and applies the patch series. This is much faster than a full build and is useful
+to check whether the patch series still applies.
+
+The workflows also run when a tag like `140.0-automation` is pushed.
+
+Please note the limits of GitHub-hosted runners: 4 CPU cores, 16 GB RAM, and a job timeout of 6 hours. A full build
+from scratch takes several hours, therefore:
+
+1. `linux.yml` uses [sccache](https://github.com/mozilla-actions/sccache-action) so that repeat builds only compile
+what changed.
+1. `windows.yml` disables LTO and uses fewer parallel compiler jobs (`-j4`) to stay within the memory of the runner,
+and the checked-in `mozconfig` for Windows is adjusted at build time (the hard-coded `WIN32_REDIST_DIR` is dropped so
+that the redistributable of the installed Visual Studio is detected automatically). These adjustments are made on the
+working copy only, the files in this repository are not modified by the CI run.
+1. Builds that need more headroom (or reproducible release builds) still have to run on a self-hosted runner or a
+larger runner with a corresponding `runs-on` label.
+
 ## One-off build
 
 The standard build script `build.sh` initially pulls two Mozilla repositories. This is fine if you want to repeat the
