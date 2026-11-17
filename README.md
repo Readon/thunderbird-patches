@@ -104,14 +104,14 @@ GitHub Actions can build Betterbird from the patches in this repository. The wor
 | --- | --- | --- |
 | `linux.yml` | `ubuntu-22.04` | `betterbird-*.tar.xz` for Linux/x86_64 |
 | `windows.yml` | `windows-2022` | `betterbird-*.installer.exe` for Windows/x86_64 |
-| `windows-full.yml` | `windows-2022` | same, but resumable across several runs (see below) |
 | `mac-arm64.yml` | `macos-14` | `*.mac.dmg` for macOS/arm64 |
+
 Each workflow can be started manually from the "Actions" tab ("Run workflow") where you pick the ESR version
 (`140` or `153`) and the mode:
 
 1. `build` clones the sources, applies the patch series, builds and packages Betterbird, and uploads the installer as
-a workflow artifact. `.github/workflows/*` are the thin wrapper, the actual work is done by `build/ci/linux-build.sh`
-and `build/ci/windows-build.sh`, which call `build/build.sh`.
+a workflow artifact. `.github/workflows/*` are the thin wrapper, the actual work is done by `build/ci/linux-build.sh`,
+`build/ci/windows-build.sh` and `build/ci/windows-full.sh`, which call `build/build.sh`.
 1. `prepare` only clones the sources and applies the patch series. This is much faster than a full build and is useful
 to check whether the patch series still applies.
 
@@ -119,9 +119,9 @@ The workflows also run when a tag like `140.0-automation` is pushed.
 
 ### Windows builds and the 6 hour limit
 
-A full Betterbird build needs roughly 4 hours on a `windows-2022` runner (for comparison: a full Firefox Windows build
-takes about 3.9 hours there), which fits into the limit, but leaves little headroom for retries. `windows-full.yml` is
-therefore resumable:
+A full Betterbird build needs about 3.2 hours on a `windows-2022` runner (for comparison: a full Firefox Windows build
+takes about 3.9 hours there), which fits into the 6 hour limit. `windows.yml` keeps some headroom by making the build
+resumable anyway:
 
 1. `mach build` runs under a time budget (`budget-minutes`, default 240). When the budget is reached the build stops and
 the job still ends successfully, so the following cache step always runs.
