@@ -138,12 +138,13 @@ runner; a bigger machine or a self-hosted runner remains the faster option for r
 Please note the limits of GitHub-hosted runners: 4 CPU cores, 16 GB RAM, and a job timeout of 6 hours. A full build
 from scratch takes several hours, therefore:
 
-1. `linux.yml` builds without a compiler cache: the cache service that `sccache` expects is not available on
-GitHub-hosted runners, so every run compiles everything from scratch. Expect several hours per run.
-1. `windows.yml` disables LTO and uses fewer parallel compiler jobs (`-j4`) to stay within the memory of the runner,
-and the checked-in `mozconfig` for Windows is adjusted at build time (the hard-coded `WIN32_REDIST_DIR` is dropped so
-that the redistributable of the installed Visual Studio is detected automatically). These adjustments are made on the
-working copy only, the files in this repository are not modified by the CI run.
+1. `linux.yml` builds without a compiler cache and caps the parallel compiler jobs at `-j4` (the checked-in
+mozconfig uses `-j8`, which needs more memory than the runner has). Every run compiles everything from scratch.
+1. `windows.yml` disables LTO, caps the parallel compiler jobs at `-j4` and caches the compiler output in sccache.
+1. Both platforms drop `ac_add_options --enable-tests` from the working copy of the mozconfig: the test-only targets
+are not needed for the installer and on ESR 153 the gtest helper `content_analysis_sdk_agent.exe` does not link.
+1. Other adjustments on the working copy only (the files in this repository are not modified by a CI run): the
+hard-coded `WIN32_REDIST_DIR` is dropped so that the redistributable of the installed Visual Studio is detected.
 1. Builds that need more headroom (or reproducible release builds) still have to run on a self-hosted runner or a
 larger runner with a corresponding `runs-on` label.
 
