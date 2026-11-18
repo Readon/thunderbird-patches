@@ -43,9 +43,17 @@ fi
 
 cp "$REPO_DIR/build/build.sh" .
 
-# CI runners have no persistent compiler cache, so build without one. The
-# "--disable-elf-hack" option keeps the link step a bit lighter.
-echo 'ac_add_options --disable-elf-hack' >> "$REPO_DIR/$VER/mozconfig-Linux"
+# CI does not need the test-only targets, and on ESR 153 they break the build
+# ("No rule to make target ...abseil-cpp...Unified_cpp_randen_hwaes_impl_gn0.obj"
+# while linking dist/bin/content_analysis_sdk_agent.exe).
+sed -i '/^ac_add_options --enable-tests/d' "$REPO_DIR/$VER/mozconfig-Linux" 2>/dev/null || true
+
+# The runner has 4 cores. Fewer parallel jobs keep the peak memory lower than
+# the "-j8" of the checked-in mozconfig, which caused silent kills of the job.
+{
+  echo 'mk_add_options MOZ_MAKE_FLAGS="-j4"'
+  echo 'ac_add_options --disable-elf-hack'
+} >> "$REPO_DIR/$VER/mozconfig-Linux"
 
 if [ "$MODE" = "prepare" ]; then
   printf 'Y\n' | ./build.sh "$VER" apply

@@ -83,6 +83,10 @@ fi
 MOZCONFIG="$REPO_DIR/$VER/mozconfig"
 if [ -f "$MOZCONFIG" ]; then
   sed -i '/^export WIN32_REDIST_DIR/d' "$MOZCONFIG"
+  # The test-only targets break the ESR 153 build ("No rule to make target
+  # ...abseil-cpp...Unified_cpp_randen_hwaes_impl_gn0.obj" while linking
+  # dist/bin/content_analysis_sdk_agent.exe) and CI does not need them.
+  sed -i '/^ac_add_options --enable-tests/d' "$MOZCONFIG"
   {
     echo 'mk_add_options MOZ_MAKE_FLAGS="-j4"'
     echo 'ac_add_options --disable-lto'
