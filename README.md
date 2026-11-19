@@ -142,7 +142,9 @@ from scratch takes several hours, therefore:
 wall-clock budget (`budget-minutes`, default 300) and is restarted inside the same job whenever the runner interrupts it:
 GitHub-hosted Linux runners occasionally send SIGTERM to the running step (visible as `Process completed with exit code
 143` in the middle of a compile, with no OOM and no disk error). The helper script traps that signal and starts
-`mach build` again on the object directory built so far, with `-k 0` so that make continues past stale leftovers.
+`mach build` again on the object directory built so far, with make's `-k` (keep-going) so that a resumed build does not
+stop at the first unrelated failure. Note that on Linux `mach` picks the job count from the available memory itself
+("using 4 jobs for 4 cores based on 15.6 GiB RAM"), so the `-j8` of the checked-in mozconfig is not used there anyway.
 1. `windows.yml` disables LTO, caps the parallel compiler jobs at `-j4` and caches the compiler output in sccache.
 1. Both platforms replace `ac_add_options --enable-tests` by `--disable-tests` in the working copy of the mozconfig (the
 test targets are the default for non-release builds, so dropping the option does nothing): the test-only targets are not

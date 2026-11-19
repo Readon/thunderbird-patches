@@ -68,11 +68,14 @@ grep -q '^ac_add_options --disable-tests' "$MOZCONFIG" || echo 'ac_add_options -
 # so the option has to be replaced by --disable-tests, not just dropped.
 # "--disable-elf-hack" keeps the link step a bit lighter and the runner has no
 # persistent compiler cache, so we build without ccache.
-# "-k 0" lets make continue past unrelated failures, which matters when the
-# build is resumed after an interrupt.
+# "-k" (keep-going) lets make continue past an unrelated failure, which matters
+# when a build is resumed after an interrupt. It must be spelled "-k", not
+# "-k 0": make reads the 0 as a target name and stops with
+# "No rule to make target '0'". The -j8 is repeated because a later
+# mk_add_options for the same variable replaces the earlier value.
 {
   echo 'ac_add_options --disable-elf-hack'
-  echo 'mk_add_options MOZ_MAKE_FLAGS="-k 0"'
+  echo 'mk_add_options MOZ_MAKE_FLAGS="-j8 -k"'
 } >> "$MOZCONFIG"
 
 if [ "$MODE" = "prepare" ]; then
