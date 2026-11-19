@@ -43,10 +43,14 @@ fi
 
 cp "$REPO_DIR/build/build.sh" .
 
-# CI does not need the test-only targets, and on ESR 153 they break the build
-# ("No rule to make target ...abseil-cpp...Unified_cpp_randen_hwaes_impl_gn0.obj"
-# while linking dist/bin/content_analysis_sdk_agent.exe).
-sed -i '/^ac_add_options --enable-tests/d' "$REPO_DIR/$VER/mozconfig-Linux" 2>/dev/null || true
+# The test-only targets must not be built: they are not needed for the
+# installer, they cost build time and memory, and on ESR 153 the gtest helper
+# content_analysis_sdk_agent.exe does not link on Windows
+# ("No rule to make target ...abseil-cpp...Unified_cpp_randen_hwaes_impl_gn0.obj").
+# Note that --enable-tests is the default for non-release builds, so the option
+# has to be replaced by --disable-tests, not just dropped.
+sed -i -e 's/\r$//' -e 's/^ac_add_options --enable-tests$/ac_add_options --disable-tests/' "$REPO_DIR/$VER/mozconfig-Linux"
+grep -q '^ac_add_options --disable-tests' "$REPO_DIR/$VER/mozconfig-Linux" || echo 'ac_add_options --disable-tests' >> "$REPO_DIR/$VER/mozconfig-Linux"
 
 # The runner has 4 cores. Fewer parallel jobs keep the peak memory lower than
 # the "-j8" of the checked-in mozconfig, which caused silent kills of the job.

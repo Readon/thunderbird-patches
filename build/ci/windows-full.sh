@@ -1,10 +1,10 @@
 #!/bin/bash
-# CI helper used by .github/workflows/windows-full.yml.
+# CI helper used by .github/workflows/windows.yml for "mode=build".
 #
-# Same as windows-build.sh, but "mach build" runs with a time budget. The
-# workflow persists the sccache directory, so a run that stops because the
-# budget is exhausted can be continued simply by starting the workflow again:
-# the next run restores the cache and only compiles what is still missing.
+# "mach build" runs with a time budget. The workflow persists the sccache
+# directory, so a run that stops because the budget is exhausted can be
+# continued simply by starting the workflow again: the next run restores the
+# cache and only compiles what is still missing.
 #
 # Environment:
 #   VERSION         ESR version to build ("140" or "140.0-automation")
@@ -82,11 +82,18 @@ fi
 # workflow persists, and stay within the memory and core count of the runner.
 MOZCONFIG="$REPO_DIR/$VER/mozconfig"
 if [ -f "$MOZCONFIG" ]; then
+  # Normalise the line endings first, otherwise the patterns below do not match
+  # on a checkout that used core.autocrlf.
+  sed -i 's/\r$//' "$MOZCONFIG"
   sed -i '/^export WIN32_REDIST_DIR/d' "$MOZCONFIG"
-  # The test-only targets break the ESR 153 build ("No rule to make target
-  # ...abseil-cpp...Unified_cpp_randen_hwaes_impl_gn0.obj" while linking
-  # dist/bin/content_analysis_sdk_agent.exe) and CI does not need them.
-  sed -i '/^ac_add_options --enable-tests/d' "$MOZCONFIG"
+  # The test-only targets must not be built: they are not needed for the
+  # installer, they cost build time, and the gtest helper
+  # content_analysis_sdk_agent.exe does not link on Windows in ESR 153
+  # ("No rule to make target ...abseil-cpp...Unified_cpp_randen_hwaes_impl_gn0.obj").
+  # --enable-tests is the default for non-release builds, so the option has to
+  # be replaced by --disable-tests, not just dropped.
+  sed -i 's/^ac_add_options --enable-tests$/ac_add_options --disable-tests/' "$MOZCONFIG"
+  grep -q '^ac_add_options --disable-tests' "$MOZCONFIG" || echo 'ac_add_options --disable-tests' >> "$MOZCONFIG"
   {
     echo 'mk_add_options MOZ_MAKE_FLAGS="-j4"'
     echo 'ac_add_options --disable-lto'
