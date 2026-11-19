@@ -138,11 +138,15 @@ runner; a bigger machine or a self-hosted runner remains the faster option for r
 Please note the limits of GitHub-hosted runners: 4 CPU cores, 16 GB RAM, and a job timeout of 6 hours. A full build
 from scratch takes several hours, therefore:
 
-1. `linux.yml` builds without a compiler cache and caps the parallel compiler jobs at `-j4` (the checked-in
-mozconfig uses `-j8`, which needs more memory than the runner has). Every run compiles everything from scratch.
+1. `linux.yml` builds without a compiler cache, so every run compiles everything from scratch. `mach build` runs under a
+wall-clock budget (`budget-minutes`, default 300) and is restarted inside the same job whenever the runner interrupts it:
+GitHub-hosted Linux runners occasionally send SIGTERM to the running step (visible as `Process completed with exit code
+143` in the middle of a compile, with no OOM and no disk error). The helper script traps that signal and starts
+`mach build` again on the object directory built so far, with `-k 0` so that make continues past stale leftovers.
 1. `windows.yml` disables LTO, caps the parallel compiler jobs at `-j4` and caches the compiler output in sccache.
-1. Both platforms drop `ac_add_options --enable-tests` from the working copy of the mozconfig: the test-only targets
-are not needed for the installer and on ESR 153 the gtest helper `content_analysis_sdk_agent.exe` does not link.
+1. Both platforms replace `ac_add_options --enable-tests` by `--disable-tests` in the working copy of the mozconfig (the
+test targets are the default for non-release builds, so dropping the option does nothing): the test-only targets are not
+needed for the installer and on ESR 153 the gtest helper `content_analysis_sdk_agent.exe` does not link.
 1. Other adjustments on the working copy only (the files in this repository are not modified by a CI run): the
 hard-coded `WIN32_REDIST_DIR` is dropped so that the redistributable of the installed Visual Studio is detected.
 1. Builds that need more headroom (or reproducible release builds) still have to run on a self-hosted runner or a
