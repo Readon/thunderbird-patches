@@ -94,8 +94,22 @@ if [ -f "$MOZCONFIG" ]; then
   # be replaced by --disable-tests, not just dropped.
   sed -i 's/^ac_add_options --enable-tests$/ac_add_options --disable-tests/' "$MOZCONFIG"
   grep -q '^ac_add_options --disable-tests' "$MOZCONFIG" || echo 'ac_add_options --disable-tests' >> "$MOZCONFIG"
+  # Memory of a GitHub-hosted Windows runner: 4 cores, 16 GB RAM. ESR 153 has
+  # fat unified C++ units and four compiler jobs plus the cargo jobs did not fit
+  # ("LLVM ERROR: out of memory" in gfx/layers, "rustc-LLVM ERROR: out of memory"
+  # for gkrust, which is built with -Clto -C codegen-units=1 -C debuginfo=2).
+  JOBS=4
+  if [ "$VER" -ge 153 ]; then
+    JOBS=2
+  fi
   {
-    echo 'mk_add_options MOZ_MAKE_FLAGS="-j4"'
+    echo "mk_add_options MOZ_MAKE_FLAGS=\"-j$JOBS\""
+    # mozmake on Windows has no GNU jobserver, so cargo runs its own jobs and
+    # has to be limited separately.
+    echo "export CARGO_BUILD_JOBS=$JOBS"
+    # The release build strips the Rust debug info again (-C strip=debuginfo),
+    # so producing it only costs memory. rustc uses the last -C debuginfo.
+    echo 'export RUSTFLAGS="-C debuginfo=0"'
     echo 'ac_add_options --disable-lto'
     echo 'ac_add_options --with-ccache=sccache'
   } >> "$MOZCONFIG"

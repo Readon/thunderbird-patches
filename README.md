@@ -145,7 +145,12 @@ GitHub-hosted Linux runners occasionally send SIGTERM to the running step (visib
 `mach build` again on the object directory built so far, with make's `-k` (keep-going) so that a resumed build does not
 stop at the first unrelated failure. Note that on Linux `mach` picks the job count from the available memory itself
 ("using 4 jobs for 4 cores based on 15.6 GiB RAM"), so the `-j8` of the checked-in mozconfig is not used there anyway.
-1. `windows.yml` disables LTO, caps the parallel compiler jobs at `-j4` and caches the compiler output in sccache.
+1. `windows.yml` disables LTO and caches the compiler output in sccache. ESR 153 needs more memory headroom than the
+runner has: with four compiler jobs the build died at `gfx/layers` with `LLVM ERROR: out of memory` and at `gkrust`
+(built with `-Clto -C codegen-units=1 -C debuginfo=2`) with `rustc-LLVM ERROR: out of memory`. For 153 the CI mozconfig
+therefore uses `-j2`, sets `CARGO_BUILD_JOBS=2` (mozmake has no GNU jobserver, so cargo runs its own jobs) and
+`RUSTFLAGS="-C debuginfo=0"` (the release build strips that debug info again), and the workflow asks for a 32 GB page
+file. `mach build` also runs under the `budget-minutes` budget described above and stops cleanly when it is exhausted.
 1. Both platforms replace `ac_add_options --enable-tests` by `--disable-tests` in the working copy of the mozconfig (the
 test targets are the default for non-release builds, so dropping the option does nothing): the test-only targets are not
 needed for the installer and on ESR 153 the gtest helper `content_analysis_sdk_agent.exe` does not link.

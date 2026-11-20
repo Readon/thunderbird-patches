@@ -72,11 +72,18 @@ jobs:
     - name: Show disk space
       run: Get-Volume | Where-Object DriveLetter | Format-Table DriveLetter, FileSystemLabel, @{ n = 'FreeGB'; e = { [math]::Round($_.SizeRemaining / 1GB, 1) } }, @{ n = 'SizeGB'; e = { [math]::Round($_.Size / 1GB, 1) } }
     - name: Increase page file
+      # The action throws "Exception calling SetPageFileSize ... The operation
+      # completed successfully" and a larger page file only takes effect after a
+      # reboot, which a hosted runner never does. The ESR 153 build ran out of
+      # memory, so ask for more and let the next step report the truth.
       uses: al-cheb/configure-pagefile-action@v1.5
+      continue-on-error: true
       with:
-        minimum-size: 16GB
-        maximum-size: 16GB
+        minimum-size: 32GB
+        maximum-size: 32GB
         disk-root: "C:"
+    - name: Show page file
+      run: Get-CimInstance Win32_PageFileUsage | Format-Table Name, AllocatedBaseSize, CurrentUsage
     - name: Keep LF line endings
       # The runner image sets core.autocrlf=true, which would check out the
       # patch series with CRLF line endings and break "hg qpush".
