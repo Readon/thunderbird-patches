@@ -31,6 +31,11 @@ on:
         required: true
         type: choice
         options: ["180", "240", "300"]
+      fresh:
+        description: "Ignore the cached compiler output (use after a cache was corrupted)"
+        default: false
+        required: true
+        type: boolean
   # Run on tag push, e.g. "140.0-automation"
   push:
     tags: '[0-9][0-9][0-9].*-automation'
@@ -50,6 +55,7 @@ env:
   # hosted runners, so the directory is cached with actions/cache instead.
   SCCACHE_DIR: C:\sccache
   SCCACHE_CACHE_SIZE: 8G
+  FRESH: ${{ inputs.fresh }}
   USE_MINTTY: "0"
 
 jobs:
@@ -127,6 +133,11 @@ jobs:
         Remove-Item $pfx
         Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Format-Table Subject, Thumbprint
     - name: Restore compiler cache
+      # A run that ends because a compiler was killed (out of memory) can leave
+      # truncated objects in the cache; they surface later as
+      # "No rule to make target ... Unified_cpp_...obj" when xul.dll links. With
+      # fresh=checked skip the restore and fill a clean cache from scratch.
+      if: inputs.fresh != true
       uses: actions/cache/restore@v4
       with:
         path: C:\sccache
