@@ -172,10 +172,12 @@ echo "Build finished within the budget, packaging"
 
 echo "======================================================="
 shopt -s nullglob
-installers=(obj-*/dist/install/sea/*.installer.exe)
+# ESR 153 (Firefox 141+ base) puts the Windows installer directly in dist/,
+# older versions used dist/install/sea/. Match both.
+installers=(obj-*/dist/*.installer.exe obj-*/dist/install/sea/*.installer.exe)
 if [ "${#installers[@]}" -eq 0 ]; then
   echo "No Betterbird installer was produced." >&2
-  ls -l obj-*/dist/install/sea/ >&2 || true
+  ls -l obj-*/dist/ obj-*/dist/install/sea/ >&2 || true
   exit 1
 fi
 printf 'Produced:\n'
