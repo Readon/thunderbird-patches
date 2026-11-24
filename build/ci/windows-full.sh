@@ -111,6 +111,15 @@ if [ -f "$MOZCONFIG" ]; then
     # so producing it only costs memory. rustc uses the last -C debuginfo.
     echo 'export RUSTFLAGS="-C debuginfo=0"'
     echo 'ac_add_options --disable-lto'
+    # ESR 153 links libwebrtc into xul.dll. The gyp -> moz.build backend
+    # truncates the unified-file base name of the very long target
+    # goog_cc_scream_network_controller_gn: make then asks for
+    # "Unified_cpp_etwork_controller_gn0.obj" (the leading "network" lost its
+    # prefix) and stops with "No rule to make target ... needed by xul.dll".
+    # This is deterministic (reproduced from a clean cache, no OOM). Thunderbird
+    # has no WebRTC feature, so drop the whole component. CI working copy only;
+    # Linux 153 links fine without it and is left untouched.
+    echo 'ac_add_options --disable-webrtc'
     echo 'ac_add_options --with-ccache=sccache'
   } >> "$MOZCONFIG"
 fi
